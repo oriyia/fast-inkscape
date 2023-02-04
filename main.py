@@ -5,6 +5,7 @@ import pyperclip
 import pathlib
 import os
 from appdirs import user_config_dir
+import shutil
 
 # command = [
 #     'inkscape', filepath,
@@ -22,46 +23,46 @@ user_config_directory = pathlib.Path(user_config_dir("fast_inkscape"))
 if not user_config_directory.is_dir():
     user_config_directory.mkdir()
 
-roots_file =  user_config_directory / 'roots'
+root_projects_file =  user_config_directory / 'root_projects'
 template_image = user_config_directory / 'template.svg'
-config = user_config_directory / 'config.py'
+config_file = user_config_directory / 'config.py'
 
 @click.group()
 def cli():
     pass
 
 
-def inkscape(path):
+def run_inkscape(path):
     sp.Popen(['inkscape', str(path)])
 
 
 @cli.command()
 @click.argument('title')
 @click.argument(
-    'root',
+    'root_project',
     default=os.getcwd(),
     type=click.Path(exists=False, dir_okay=True, file_okay=False)
 )
-def create_image(title, root):
-    root += '/images/'
-    target_path = pathlib.Path(root).absolute()
-    if not target_path.exists():
-        target_path.mkdir()
+def create_image(title, root_project):
+    """
+    Function create image.svg and open with inkscape
+    """
+    root_project = root_project + '/images/'
+    path_image = pathlib.Path(root_project).absolute()
 
-    title = title.strip()
-    title_image = title.replace(' ', '_').lower() + '.svg'
+    if not path_image.exists():
+        path_image.mkdir()
 
-    target_path_image = target_path / title_image
+    normal_title_image = title.strip().replace(' ', '_').lower() + '.svg'
 
-    inkscape(target_path_image)
-    # image_directory = pathlib.Path(root).absolute()
-    # image_directory = os.environ['PWD'] + "/images/"
+    path_name_image = str(path_image / normal_title_image)
 
+    path_name_template_image = str(pathlib.Path(__file__).parent / 'template.svg')
 
-# def main():
-#     # inkscape()
-#     cli()
-#     # print(os.environ["PWD"])
+    shutil.copy2(path_name_template_image, path_name_image)
+
+    run_inkscape(path_name_image)
+
 
 if __name__ == "__main__":
     cli()
