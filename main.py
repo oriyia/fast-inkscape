@@ -8,16 +8,6 @@ from appdirs import user_config_dir
 import shutil
 import re
 
-# command = [
-#     'inkscape', filepath,
-#     '--export-area-page',
-#     '--export-dpi', '300',
-#     '--export-type=pdf',
-#     '--export-latex',
-#     '--export-filename', pdf_path
-# ]
-
-name_images_directory = 'images'
 
 # Создание конфига
 user_config_directory = pathlib.Path(user_config_dir("fast_inkscape"))
@@ -45,7 +35,9 @@ def cli():
 
 
 def run_inkscape(path):
-    sp.Popen(['inkscape', str(path)])
+    process_inkscape = sp.Popen(['inkscape', str(path)])
+    result = process_inkscape.wait(3600)
+    return result
 
 
 def get_code_latex_template(title):
@@ -56,16 +48,17 @@ def get_code_latex_template(title):
             r"\end{figure}"))
 
 
-# def save_image_pdf_extension():
-#     command = [
-#         'inkscape', filepath,
-#         '--export-area-page',
-#         '--export-dpi', '300',
-#         '--export-type=pdf',
-#         '--export-latex',
-#         '--export-filename', pdf_path
-#     ]
-#     sp.Popen(command)
+def save_image_pdf_extension(path_name_image):
+    pdf_path = path_name_image.parent / (path_name_image.stem + '.pdf')
+    command = [
+        'inkscape', str(path_name_image),
+        '--export-area-page',
+        '--export-dpi', '300',
+        '--export-type=pdf',
+        '--export-latex',
+        '--export-filename', str(pdf_path)
+    ]
+    sp.Popen(command)
 
 
 @cli.command()
@@ -100,18 +93,18 @@ def create_image(title, root_project):
         normal_title_image = create_normal_title_image(count_copy_name_image)
         path_name_image = path_image / normal_title_image
 
-    path_name_image = str(path_name_image)
-
     path_name_template_image = str(pathlib.Path(__file__).parent / 'template.svg')
 
-    shutil.copy2(path_name_template_image, path_name_image)
+    shutil.copy2(path_name_template_image, str(path_name_image))
 
     name_image_without_extension = normal_title_image[:-4]
     latex_code = get_code_latex_template(name_image_without_extension)
     pyperclip.copy(latex_code)
 
-    run_inkscape(path_name_image)
+    result = run_inkscape(str(path_name_image))
 
+    if result == 0:
+        save_image_pdf_extension(path_name_image)
 
 @cli.command()
 @click.argument('title')
@@ -137,9 +130,12 @@ def edit_image(title, root_project):
     else:
         return
 
-    path_name_image = str(path_image / normal_title_image)
+    path_name_image = path_image / normal_title_image
 
-    run_inkscape(path_name_image)
+    result = run_inkscape(str(path_name_image))
+
+    if result == 0:
+        save_image_pdf_extension(path_name_image)
 
 
 if __name__ == "__main__":
