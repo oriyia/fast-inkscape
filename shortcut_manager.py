@@ -18,7 +18,7 @@ class WindowManager():
 
         self.window_resource = self.display.create_resource_object('window', window_id)
         self.determine_type_action = determine_type_action
-        self.list_grab_keys = [57, 58, 108]
+        self.list_grab_keys = [57, 58, 108, 25]
 
     def create_event(self, name_class, keycode, state_buttons):
         return name_class(
