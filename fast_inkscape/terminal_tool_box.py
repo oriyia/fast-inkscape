@@ -5,6 +5,26 @@ import os
 from pathlib import Path
 from Xlib import X
 from constants import TARGET
+import subprocess as sp
+
+
+def run_inkscape(path: str) -> int:
+    process_inkscape = sp.Popen(['inkscape', path])
+    result = process_inkscape.wait(3600)
+    return result
+
+
+def save_image_pdf_extension(path_name_image):
+    pdf_path = path_name_image.parent / (path_name_image.stem + '.pdf')
+    command = [
+        'inkscape', str(path_name_image),
+        '--export-area-page',
+        '--export-dpi', '300',
+        '--export-type=pdf',
+        '--export-latex',
+        '--export-filename', str(pdf_path)
+    ]
+    sp.Popen(command)
 
 
 def copy_file(file, target=None):

@@ -13,6 +13,9 @@ def latex_document(latex):
         \begin{document}
     """ + latex + r"\end{document}"
 
+
+path_main_script_file = Path(__file__).resolve()
+
 config = {
     # For example '~/.config/rofi/ribbon.rasi' or None
     'rofi_theme': None,
@@ -23,8 +26,11 @@ config = {
     'font_size': 10,
     'latex_document': latex_document,
     'config_path': Path('~/.config/inkscape-shortcut-manager/').expanduser(),
-    'script_path': Path(os.getcwd()),
-    'objects_path': Path(os.path.realpath(os.path.dirname(__file__))) / 'samples/objects',
+    'path_main_script_file': path_main_script_file,
+    'root_script': path_main_script_file.parent,
+    'objects_path': path_main_script_file.parent / 'samples/objects/',
+    'template_path': path_main_script_file.parent / 'samples/template.svg',
+
 }
 
 # def import_file(name, path):
