@@ -6,12 +6,22 @@ from pathlib import Path
 from Xlib import X
 from constants import TARGET
 import subprocess as sp
+import pyperclip
 
 
 def run_inkscape(path: str) -> int:
-    process_inkscape = sp.Popen(['inkscape', path])
-    result = process_inkscape.wait(3600)
-    return result
+    result = sp.Popen(['inkscape', path])
+    return result.returncode
+
+
+def paste_code_latex_document(title: str):
+    title = str(Path(title).stem)
+    latex_code = '\n'.join((
+        r"\begin{figure}[H]",
+        rf"\centering \incfig{{{title}}}",
+        rf"\caption{{{title}}} \label{{fig:{title}}}",
+        r"\end{figure}"))
+    pyperclip.copy(latex_code)
 
 
 def save_image_pdf_extension(path_name_image):

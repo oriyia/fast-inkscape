@@ -24,15 +24,6 @@ def cli():
     pass
 
 
-def get_code_latex_template(title) -> str:
-    title = title.parent / title.stem
-    return '\n'.join((
-            r"\begin{figure}[H]",
-            rf"\centering \incfig{{{title}}}",
-            rf"\caption{{{title}}} \label{{fig:{title}}}",
-            r"\end{figure}"))
-
-
 def create_normal_title_image(number_copy: int, title: str) -> str:
     title_image = title.strip().replace(' ', '_').lower() + str(number_copy) + '.svg'
     return title_image
