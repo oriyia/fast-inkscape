@@ -1,19 +1,7 @@
 from pathlib import Path
-import os
 
 
-def latex_document(latex):
-    return r"""
-        \documentclass[12pt,border=12pt]{standalone}
-        \usepackage[utf8]{inputenc}
-        \usepackage[T1]{fontenc}
-        \usepackage{textcomp}
-        \usepackage{amsmath, amssymb}
-        \newcommand{\R}{\mathbb R}
-        \begin{document}
-    """ + latex + r"\end{document}"
-
-
+# $PATH_SCRIPT/fast_inkscape/fast_inkscape/fast_inkscape.py
 path_main_script_file = Path(__file__).resolve()
 
 config = {
@@ -24,24 +12,13 @@ config = {
     # Font that's used to add text in inkscape
     'font': 'monospace',
     'font_size': 10,
-    'latex_document': latex_document,
     'config_path': Path('~/.config/inkscape-shortcut-manager/').expanduser(),
-    'path_main_script_file': path_main_script_file,
-    'root_script': path_main_script_file.parent,
-    'objects_path': path_main_script_file.parent / 'samples/objects/',
-    'template_path': path_main_script_file.parent / 'samples/template.svg',
 
+    'path_main_script_file': path_main_script_file,
+    'root_script': path_main_script_file.parents[1],
+    'objects_path': path_main_script_file.parents[1] / 'samples/objects/',
+    'template_path': path_main_script_file.parents[1] / 'samples/template.svg',
+    'desired_name_window': 'inkscape',
 }
 
-# def import_file(name, path):
-#     import importlib.util as util
-#     spec = util.spec_from_file_location(name, path)
-#     module = util.module_from_spec(spec)
-#     spec.loader.exec_module(module)
-#     return module
-
 CONFIG_PATH = Path('~/.config/inkscape-shortcut-manager').expanduser()
-
-# if (CONFIG_PATH / 'config.py').exists():
-#     userconfig = import_file('config', CONFIG_PATH / 'config.py').config
-#     config.update(userconfig)
