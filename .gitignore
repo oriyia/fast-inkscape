@@ -4,3 +4,4 @@ roots
 /dist/
 /*.egg-info
 /build
+*.log
