@@ -29,15 +29,14 @@ def create_normal_title_image(number_copy: int, title: str) -> str:
     return title_image
 
 
-def create_images_directory(root: str, name: str):
-    target = root + name
-    images_path = Path(target).absolute()
+def create_images_directory(root: str, name: str) -> Path:
+    images_path = Path(root, name).absolute()
     if not images_path.exists():
         images_path.mkdir()
     return images_path
 
 
-def create_image_base(title: str, root_project: str):
+def create_image_base(title: str, root_project: str) -> tuple[Path, str]:
     image_directory_path = create_images_directory(root_project, 'images')
     normal_title_image = create_normal_title_image(0, title)
 
@@ -66,14 +65,21 @@ def create_image(title, root_project):
     Function create title.svg in root_project and open with inkscape
     """
     path_name_image, normal_title_image = create_image_base(title, root_project)
-    latex_code = get_code_latex_template(normal_title_image)
-    pyperclip.copy(latex_code)
+    paste_code_latex_document(normal_title_image)
 
     result = run_inkscape(str(path_name_image))
+    # listen = threading.Thread(target=run_inkscape, args=[str(path_name_image)])
+    # listen.start()
 
-    if result == 0:
-        save_image_pdf_extension(path_name_image)
+    name_window = config['desired_name_window']
+    run_window_key_interception(name_window)
 
+    # if result == 0:
+    #     save_image_pdf_extension(path_name_image)
+
+# def create(inkscape_id):
+#     m = Manager(inkscape_id)
+#     m.listen()
 
 @cli.command()
 @click.argument('title')
@@ -86,8 +92,7 @@ def edit_image(title, root_project):
     """
     Function edit image.svg and open with inkscape
     """
-    root_project = root_project + '/images/'
-    image_directory_path = Path(root_project).absolute()
+    image_directory_path = create_images_directory(root_project, 'images')
 
     if not re.search('incfig', title):
         return
