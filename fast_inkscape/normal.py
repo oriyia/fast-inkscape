@@ -20,8 +20,10 @@ def event_to_string(self, event, char):
     return a
 
 
-def replay_keys(self, events):
-    pass
+def replay_keys(self, events: list):
+    # for event in events:
+    #     determine_type_action(self, event)
+    return 4, 5
 
 
 def determine_type_action(self, event):
@@ -35,9 +37,6 @@ def determine_type_action(self, event):
     # если фиксируем нажатие то пока просто его добавляем
     if event.type == X.KeyPress and char:
         pressed_keys.add(event_to_string(self, event, char))
-        return
-
-    if event.type != X.KeyRelease:
         return
 
     # и только когда событие "отпускание клавиши", то продолжается работа
