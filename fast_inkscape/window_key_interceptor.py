@@ -1,14 +1,14 @@
-#!/usr/bin/python3
 import threading
 from Xlib.display import Display
 from Xlib import X, XK
 from Xlib.protocol import event
 from Xlib import error
+from loguru import logger
 
 from normal import replay_keys
+from config import config
 
 
-# перехватывает нажатия, взамен отправляет свои нажатия
 class WindowKeyInterceptor:
     def __init__(self, window_id):
         self.window_id = window_id
@@ -21,13 +21,13 @@ class WindowKeyInterceptor:
             'n': 57, 'm': 58, 'Shift_R': 108, 'w': 25, 't': 28, 'a': 38,
         }
 
-    def string_to_keycode(self, key) -> int:
+    def string_to_keycode(self, key: str) -> int:
         keysym = XK.string_to_keysym(key)
         keycode = self.display.keysym_to_keycode(keysym)
         return keycode
 
     def create_event(self, name_event, keycode, state_buttons):
-        event =  name_event(
+        event = name_event(
             time=X.CurrentTime,
             root=self.root,
             window=self.window_resource,
@@ -38,18 +38,19 @@ class WindowKeyInterceptor:
         )
         return event
 
-    def press_key(self, key, mask=X.NONE) -> None:
+    def press_key(self, key: str, mask=X.NONE):
         keycode = self.string_to_keycode(key)
         for type_event in [event.KeyPress, event.KeyRelease]:
             new_event = self.create_event(type_event, keycode, mask)
             self.window_resource.send_event(new_event, propagate=True)
 
-    def grab_keys(self, grippable_keys):
-        print('Захватываем клавиши')
+    def grab_keys(self, grippable_keys: dict):
+        logger.info('Захватываем клавиши')
         for key in list(grippable_keys.values()):
             self.window_resource.grab_key(
                 key, X.AnyModifier, True, X.GrabModeAsync, X.GrabModeAsync
             )
+            logger.info(f"Захватили клавишу {key}")
         self.window_resource.change_attributes(
             event_mask=X.KeyReleaseMask | X.KeyPressMask | X.StructureNotifyMask
         )
@@ -58,6 +59,7 @@ class WindowKeyInterceptor:
         self.window_resource.ungrab_key(X.AnyKey, X.AnyModifier)
 
     def start_intercepting(self):
+        logger.success('Активируем захват')
         self.grab_keys(self.grippable_keys)
         click_events = []
         while True:
@@ -72,73 +74,58 @@ class WindowKeyInterceptor:
             if type_event == X.KeyRelease and click_events:
                 self.display.allow_events(X.ReplayKeyboard, X.CurrentTime)
                 key, mask = replay_keys(self, click_events)
-                click_events.clear()
-                self.press_key(key, mask)
-                self.display.flush()
-                self.display.sync()
+                logger.info(f"Получилось {key}")
+                # click_events.clear()
+                # self.press_key(key, mask)
+                # self.display.flush()
+                # self.display.sync()
 
             if type_event == X.DestroyNotify:
                 if id_event == self.window_id:
+                    logger.info('Окно закрыли. Выполнение скрипта завершено.')
+                    logger.info('------------------------------------------')
                     self.ungrab_keys()
                     return
 
 
-def create_thread_manager(name_function, args_function):
-    thread = threading.Thread(
-        target=name_function,
-        args=args_function
-    )
-    thread.start()
-
-
-def check_name_window(window, desired_name_window) -> bool:
-    data_window = window.get_wm_class()
-    if (data_window and desired_name_window in data_window[0]):
-        return True
-    else:
-        return False
-
-
-def is_window_exists(root, name_window) -> int | None:
+def get_window_id(root, name_window: str) -> int | None:
     for window in root.query_tree().children:
-        if check_name_window(window, name_window):
+        data_window = window.get_wm_class()
+        if (data_window and name_window in data_window[0]):
             return window.id
     return None
 
 
-def search_window(name_window) -> int:
+def search_window(name_window: str) -> int | None:
     display = Display()
     screen = display.screen()
     root = screen.root
-    window_id = is_window_exists(root, name_window)
+    logger.info("Начинаем поиск окна")
+    window_id = get_window_id(root, name_window)
+    logger.info(f"window_id: {window_id}")
     if window_id:
+        logger.info("Окно найдено (было уже создано)")
         return window_id
 
-    root.change_attributes(event_mask=X.SubstructureNotifyMask | X.KeyPressMask)
+    root.change_attributes(event_mask=X.SubstructureNotifyMask)
     while True:
+        logger.info("Окно не было создано, ждем... запуска)")
         next_event = display.next_event()
         if next_event.type == X.CreateNotify:
             window = next_event.window
             try:
-                window_id = is_window_exists(window, name_window)
+                window_id = get_window_id(window, name_window)
                 if window_id:
+                    logger.info("Окно найдено (только что создано)")
                     return window_id
             except error.BadWindow:
-                pass
+                return None
 
 
-def main():
-    desired_name_window = 'inkscape'
-    while True:
-        print("Начинаем поиск окна -----------------------------------------")
-        window_id = search_window(desired_name_window)
-        if window_id:
-            print('Окно найдено, активируем захват')
-            # create_thread_manager(create_window_manager, [window_id, desired_events])
-            interceptor = WindowKeyInterceptor(window_id)
-            interceptor.start_intercepting()
-            print('Окно закрыто')
-
-
-if __name__ == '__main__':
-    main()
+def run_window_key_interception(name_window: str):
+    window_id = search_window(name_window)
+    if window_id:
+        interceptor_key = WindowKeyInterceptor(window_id)
+        interceptor_key.start_intercepting()
+    else:
+        logger.warning("Не удалось запустить перехватчик клавиш окна")

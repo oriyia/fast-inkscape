@@ -1,35 +1,22 @@
-#!/usr/bin/env python3
-import subprocess as sp
+#!/usr/bin/python3
 import click
-import pyperclip
 from pathlib import Path
 import os
-from appdirs import user_config_dir
 import shutil
 import re
 from loguru import logger
+import threading
+
 from config import config
 from terminal_tool_box import run_inkscape, save_image_pdf_extension
+from terminal_tool_box import paste_code_latex_document
+from window_key_interceptor import run_window_key_interception
 
-
-# Создание конфига
-# user_config_directory = Path(user_config_dir("fast_inkscape"))
-#
-# if not user_config_directory.is_dir():
-#     user_config_directory.mkdir()
-#
-# root_projects_file =  user_config_directory / 'root_projects'
-# template_image = user_config_directory / 'template.svg'
-# config_file = user_config_directory / 'config.py'
-#
-# # Создаем файлы конифга, если их нет
-# if not root_projects_file.is_file():
-#     root_projects_file.touch()
-#
-# if not template_image.is_file():
-#     source = str(config['template_path'])
-#     destination = str(template_image)
-#     shutil.copy2(source, destination)
+logger.add(
+    str(config['root_script']) + '/debug.log',
+    format="{time} {level} {message}", level="DEBUG",
+    rotation="50 MB", compression='zip'
+)
 
 
 @click.group()
