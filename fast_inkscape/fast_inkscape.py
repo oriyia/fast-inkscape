@@ -106,6 +106,8 @@ def edit_image(title, root_project):
     path_name_image = image_directory_path / normal_title_image
 
     result = run_inkscape(str(path_name_image))
+    name_window = config['desired_name_window']
+    result = run_window_key_interception(name_window, path_name_image)
 
     if result == 0:
         logger.info('Скрипт завершает свою работу')

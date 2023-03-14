@@ -76,7 +76,6 @@ class WindowKeyInterceptor:
             self.window_resource.grab_key(
                 key, X.AnyModifier, True, X.GrabModeAsync, X.GrabModeAsync
             )
-            logger.info(f"Захватили клавишу {key}")
         self.window_resource.change_attributes(
             event_mask=X.KeyReleaseMask | X.KeyPressMask | X.StructureNotifyMask
         )
@@ -84,27 +83,30 @@ class WindowKeyInterceptor:
     def ungrab_keys(self):
         self.window_resource.ungrab_key(X.AnyKey, X.AnyModifier)
 
-    def start_intercepting(self):
+    def start_intercepting(self, path_name_image: Path) -> int:
         logger.success('Активируем захват')
         self.grab_keys(self.grippable_keys)
-        click_events = []
+        press_release_events = []
+        press_events = []
         while True:
             next_event = self.display.next_event()
             type_event = next_event.type
             id_event = next_event.window.id
 
             if type_event == X.KeyPress:
-                click_events.append(next_event)
+                press_release_events.append(next_event)
+                press_events.append(next_event)
 
             # как только первое отпускание клавиши делаем подмену
-            if type_event == X.KeyRelease and click_events:
+            if type_event == X.KeyRelease and press_release_events:
+                press_release_events.append(next_event)
                 self.display.allow_events(X.ReplayKeyboard, X.CurrentTime)
-                key, mask = replay_keys(self, click_events)
-                logger.info(f"Получилось {key}")
-                # click_events.clear()
-                # self.press_key(key, mask)
-                # self.display.flush()
-                # self.display.sync()
+                new_events = replace_events(self, press_release_events, press_events, path_name_image)
+                self.send_events(new_events)
+                press_release_events.clear()
+                press_events.clear()
+                self.display.flush()
+                self.display.sync()
 
             if type_event == X.DestroyNotify:
                 if id_event == self.window_id:
@@ -147,8 +149,9 @@ def search_window(name_window: str) -> int | None:
                 return None
 
 
-def run_window_key_interception(name_window: str):
+def run_window_key_interception(name_window: str, path_name_image: Path) -> int:
     window_id = search_window(name_window)
+    focus_to_inkscape()
     if window_id:
         interceptor_key = WindowKeyInterceptor(window_id)
         result = interceptor_key.start_intercepting(path_name_image)
