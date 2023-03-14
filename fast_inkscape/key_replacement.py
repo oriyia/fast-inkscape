@@ -1,100 +1,144 @@
 from Xlib import X, XK
+from Xlib.protocol import event
+from loguru import logger
+from pathlib import Path
+
 from constants import TARGET
-from terminal_tool_box import copy_file, copy_text
+from terminal_tool_box import copy_file, copy_text, enter_text_in_editor, save_image_pdf_extension, paste_object, save_object
+
+def get_symbols_events(self, events: list) -> set:
+    key_mods = []
+    pressed_keys = set()
+    for event in events:
+        keycode = event.detail
+        keysym = self.display.keycode_to_keysym(keycode, 0)
+        symbol = XK.keysym_to_string(keysym)
+        logger.info(f"Keycode {keycode}")
+        if event.state & X.ShiftMask:
+            key_mods.append('Shift')
+        if event.state & X.ControlMask:
+            key_mods.append('Control')
+        symbols_event =  ''.join(mod + '+' for mod in key_mods) + (symbol if symbol else '?')
+        logger.info(f"Зафиксировано {symbols_event}")
+        pressed_keys.add(symbols_event)
+    return pressed_keys
 
 
-pressed_keys = set()
-
-events = []
-
-def event_to_string(self, event, char):
-    mods = []
-    if event.state & X.ShiftMask:
-        mods.append('Shift')
-
-    if event.state & X.ControlMask:
-        mods.append('Control')
-
-    a =  ''.join(mod + '+' for mod in mods) + (char if char else '?')
-    print(f'event_to_string: {a}')
-    return a
-
-
-def replay_keys(self, events: list):
-    # for event in events:
-    #     determine_type_action(self, event)
-    return 4, 5
-
-
-def determine_type_action(self, event):
-    keycode = event.detail
-    keysym = self.display.keycode_to_keysym(keycode, 0)
-    char = XK.keysym_to_string(keysym)
-    print(f'Зафиксировано нажатие или отпускание {char}')
-
-    events.append(event)
-
-    # если фиксируем нажатие то пока просто его добавляем
-    if event.type == X.KeyPress and char:
-        pressed_keys.add(event_to_string(self, event, char))
-        return
-
-    # и только когда событие "отпускание клавиши", то продолжается работа
-    is_process_keystrokes = False
-    if len(pressed_keys) > 1:
-        paste_style(self, pressed_keys)
-        is_process_keystrokes = True
-    elif len(pressed_keys) == 1:
-        # Get the only element in pressed
-        ev = next(iter(pressed_keys))
-        is_process_keystrokes = handle_single_key(self, ev)
-
-    # replay events to Inkscape if we couldn't handle them
-    if not is_process_keystrokes:
-        replay(self)
-
-    events.clear()
-    pressed_keys.clear()
-
-
-def handle_single_key(self, ev):
-    print('handle_single_key')
-    if ev == 'w':
-        # Pencil
-        self.press_key('p')
+@logger.catch
+def replace_events(self, press_release_events: list, press_events: list, path_name_image: Path) -> list:
+    symbols = get_symbols_events(self, press_events)
+    if len(symbols) > 1:
+        new_events = paste_style(self, symbols)
+    elif len(symbols) == 1:
+        new_events =  handle_single_key(self, symbols, press_release_events, path_name_image)
     else:
-        return False
-    return True
+        new_events = press_release_events
+    return new_events
 
 
-def paste_style(self, combination):
+# def replace_events(self, press_release_events: list, press_events) -> tuple[str, int]:
+#     symbols = get_symbols_events(self, press_events)
+#     if len(symbols) > 1:
+#         new_symbol, mask = paste_style(self, symbols)
+#     elif len(symbols) == 1:
+#         new_symbol, mask =  handle_single_key(self, symbols, press_release_events)
+#     else:
+#         new_symbol = 'c'
+#         mask = X.NONE
+#     return new_symbol, mask
+#
+#
+def handle_single_key(self, symbols: set, events: list, path_name_image: Path) -> list:
+    logger.info('Активируем инструмент')
+    if 'w' in symbols:
+        # Pencil
+        return self.create_events('p', X.NONE)
+    elif 'x' in symbols:
+        # Прилипание
+        return self.create_events('percent', X.ShiftMask)
+    elif 'f' in symbols:
+        enter_text_in_editor()
+        return self.create_events('s', X.NONE)
+    elif 'a' in symbols:
+        # paste object
+        result = paste_object()
+        if result == 0:
+            return self.create_events('v', X.ControlMask)
+        else:
+            return self.create_events('s', X.NONE)
+    elif 'v' in symbols:
+        # save object
+        save_object(self)
+        return self.create_events('s', X.NONE)
+    elif 'g' in symbols:
+        # Сохранить изображение
+        save_image_pdf_extension(path_name_image)
+        return self.create_events('s', X.ControlMask)
+    elif 'z' in symbols:
+        # Delete
+        return self.create_events('Delete', X.NONE)
+    else:
+        logger.info('Ниодно событие не совпало, отправляем как есть')
+        return events
+
+
+def paste_style(self, symbols) -> list:
     """
-    This creates the style depending on the combination of keys.
+    This creates the style depending on the symbols of keys.
     """
-    print('paste_style')
     # Stolen from TikZ
-    pt = 1.327 # pixels
+    pt = 2.3225 # pixels
     w = 0.4 * pt
-    thick_width = 0.8 * pt
-    very_thick_width = 1.2 * pt
+    thick_width = 0.68 * pt
+    very_thick_width = 0.895 * pt
 
 
     style = {
+        'fill': 'none',
+        'fill-opacity': 1,
+        'stroke': 'black',
         'stroke-opacity': 1,
-        'fill': 'white',
-        'fill-opacity': 1
+        'stroke-width': w,
+        'stroke-dasharray': 'none',
+        'marker-end': 'none',
+        'marker-start': 'none',
+        'paint-order': 'markers fill stroke',
     }
 
-    if 'n' in combination:
-        style['fill'] = 'black'
-        style['fill-opacity'] = 0.12
-
-    if 'm' in combination:
-        style['stroke'] = 'black'
-        style['stroke-width'] = w
-        style['marker-end'] = 'none'
-        style['marker-start'] = 'none'
+    if 'a' in symbols:
         style['stroke-dasharray'] = 'none'
+
+    if 's' in symbols:
+        style['stroke-dasharray'] = f'{w}, {2*pt}'
+
+    if 'd' in symbols:
+        style['stroke-dasharray'] = f'{3*pt}, {3*pt}'
+
+    if 'x' in symbols:
+        w = thick_width
+        style['stroke-width'] = w
+
+    if 'c' in symbols:
+        w = very_thick_width
+        style['stroke-width'] = w
+
+    if 'f' in symbols:
+        style['fill'] = '#e1edff'
+
+    if 'q' in symbols:
+        style['stroke-dasharray'] = 'none'
+        style['marker-end'] = f'url(#marker-arrow-{w})'
+
+    if 'w' in symbols:
+        style['stroke-dasharray'] = f'{w},{2*pt}'
+        style['marker-end'] = f'url(#marker-arrow-{w})'
+
+    if 'e' in symbols:
+        style['stroke-dasharray'] = f'{3*pt},{3*pt}'
+        style['marker-end'] = f'url(#marker-arrow-{w})'
+
+    if 'r' in symbols:
+        style['marker-start'] = f'url(#marker-arrow-{w})'
 
     svg = '''
           <?xml version="1.0" encoding="UTF-8" standalone="no"?>
@@ -120,12 +164,13 @@ def paste_style(self, combination):
                 </defs>
                 '''
 
-    style_string = ';'.join('{}: {}'.format(key, value)
+    style_string = ';'.join('{}:{}'.format(key, value)
         for key, value in sorted(style.items(), key=lambda x: x[0])
     )
+    logger.info(f"{style_string}")
 
     svg += f'<inkscape:clipboard style="{style_string}" /></svg>'
 
     copy_text(svg, target=TARGET)
-
-    self.press_key('v', X.ControlMask | X.ShiftMask)
+    logger.info('Вставляем стиль')
+    return self.create_events('v', X.ControlMask | X.ShiftMask)
