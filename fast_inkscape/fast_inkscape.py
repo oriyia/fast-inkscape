@@ -70,8 +70,14 @@ def create_image(title, root_project):
     result = run_window_key_interception(name_window, path_name_image)
     paste_code_latex_document(normal_title_image)
 
-    # if result == 0:
-    #     save_image_pdf_extension(path_name_image)
+    if result == 0:
+        logger.info('Скрипт завершает свою работу')
+        logger.info('------------------------------------------')
+        sys.exit()
+    elif result == 1:
+        logger.info('Скрипт не выполнил свою работу.')
+        logger.info('------------------------------------------')
+        sys.exit()
 
 
 @cli.command()
@@ -102,7 +108,13 @@ def edit_image(title, root_project):
     result = run_inkscape(str(path_name_image))
 
     if result == 0:
-        save_image_pdf_extension(path_name_image)
+        logger.info('Скрипт завершает свою работу')
+        logger.info('------------------------------------------')
+        sys.exit()
+    elif result == 1:
+        logger.info('Скрипт не выполнил свою работу.')
+        logger.info('------------------------------------------')
+        sys.exit()
 
 
 if __name__ == "__main__":

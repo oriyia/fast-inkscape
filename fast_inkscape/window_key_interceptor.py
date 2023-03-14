@@ -1,16 +1,16 @@
-import threading
 from Xlib.display import Display
 from Xlib import X, XK
 from Xlib.protocol import event
 from Xlib import error
 from loguru import logger
+from pathlib import Path
 
-from normal import replay_keys
-from config import config
+from key_replacement import replace_events
+from terminal_tool_box import focus_to_inkscape
 
 
 class WindowKeyInterceptor:
-    def __init__(self, window_id):
+    def __init__(self, window_id: int):
         self.window_id = window_id
         self.display = Display()
         self.screen = self.display.screen()
@@ -18,31 +18,57 @@ class WindowKeyInterceptor:
 
         self.window_resource = self.display.create_resource_object('window', window_id)
         self.grippable_keys = {
-            'n': 57, 'm': 58, 'Shift_R': 108, 'w': 25, 't': 28, 'a': 38,
+            'x': 53, 'w': 25, 'a': 38, 'f': 41, 'g': 42, 'z': 52, 'v': 55,
+            'w': 25, 'space': 65, 'q': 24, 'e': 26, 'r': 27, 't': 28, 's':39,
+            'd': 40, 'c': 54, 'b': 56,
         }
 
-    def string_to_keycode(self, key: str) -> int:
-        keysym = XK.string_to_keysym(key)
+    def string_to_keycode(self, symbol: str) -> int:
+        keysym = XK.string_to_keysym(symbol)
         keycode = self.display.keysym_to_keycode(keysym)
         return keycode
 
-    def create_event(self, name_event, keycode, state_buttons):
-        event = name_event(
-            time=X.CurrentTime,
-            root=self.root,
-            window=self.window_resource,
-            same_screen=0, child=X.NONE,
-            root_x=0, root_y=0, event_x=0, event_y=0,
-            state=state_buttons,
-            detail=keycode
-        )
-        return event
+    @logger.catch
+    def create_events(self, symbol: str, mask=X.NONE) -> list:
+        keycode = self.string_to_keycode(symbol)
+        logger.info(f"Создаем новое событие. Keycode {keycode}")
+        new_events = []
+        for name_event in [event.KeyPress, event.KeyRelease]:
+            new_event = name_event(
+                time=X.CurrentTime,
+                root=self.root,
+                window=self.window_resource,
+                same_screen=0, child=X.NONE,
+                root_x=0, root_y=0, event_x=0, event_y=0,
+                state=mask,
+                detail=keycode
+            )
+            new_events.append(new_event)
+        return new_events
 
-    def press_key(self, key: str, mask=X.NONE):
-        keycode = self.string_to_keycode(key)
-        for type_event in [event.KeyPress, event.KeyRelease]:
-            new_event = self.create_event(type_event, keycode, mask)
-            self.window_resource.send_event(new_event, propagate=True)
+    # def create_event(self, name_event, keycode, state_buttons):
+    #     event = name_event(
+    #         time=X.CurrentTime,
+    #         root=self.root,
+    #         window=self.window_resource,
+    #         same_screen=0, child=X.NONE,
+    #         root_x=0, root_y=0, event_x=0, event_y=0,
+    #         state=state_buttons,
+    #         detail=keycode
+    #     )
+    #     return event
+
+    # def press_key(self, symbol: str, mask=X.NONE):
+    #     keycode = self.string_to_keycode(symbol)
+    #     for type_event in [event.KeyPress, event.KeyRelease]:
+    #         new_event = self.create_event(type_event, keycode, mask)
+    #         self.window_resource.send_event(new_event, propagate=True)
+
+    @logger.catch
+    def send_events(self, events: list):
+        logger.info(f"Отправляем событие {len(events)}")
+        for ev in events:
+            self.window_resource.send_event(ev, propagate=True)
 
     def grab_keys(self, grippable_keys: dict):
         logger.info('Захватываем клавиши')
@@ -82,10 +108,9 @@ class WindowKeyInterceptor:
 
             if type_event == X.DestroyNotify:
                 if id_event == self.window_id:
-                    logger.info('Окно закрыли. Выполнение скрипта завершено.')
-                    logger.info('------------------------------------------')
+                    logger.info('Окно закрыли.')
                     self.ungrab_keys()
-                    return
+                    return 0
 
 
 def get_window_id(root, name_window: str) -> int | None:
@@ -126,6 +151,12 @@ def run_window_key_interception(name_window: str):
     window_id = search_window(name_window)
     if window_id:
         interceptor_key = WindowKeyInterceptor(window_id)
-        interceptor_key.start_intercepting()
+        result = interceptor_key.start_intercepting(path_name_image)
+        if result == 0:
+            logger.info('Window key interceptor завершил свою работу.')
+            return 0
+        else:
+            return 1
     else:
         logger.warning("Не удалось запустить перехватчик клавиш окна")
+        return 1

@@ -1,12 +1,15 @@
 import subprocess
-from config import config
 import tempfile
 import os
 from pathlib import Path
 from Xlib import X
-from constants import TARGET
 import subprocess as sp
 import pyperclip
+from loguru import logger
+
+from config import config
+from constants import TARGET
+# from key_replacement import create_events
 
 
 def run_inkscape(path: str) -> int:
@@ -37,6 +40,7 @@ def save_image_pdf_extension(path_name_image):
     sp.Popen(command)
 
 
+# Для копирования файлов файловой системы
 def copy_file(file, target=None):
     extra_args = []
     if target != None:
@@ -47,6 +51,7 @@ def copy_file(file, target=None):
         universal_newlines=True,
     )
 
+# Для копирование своего текста в коде
 def copy_text(string, target=None):
     extra_args = []
     if target != None:
